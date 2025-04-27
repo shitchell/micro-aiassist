@@ -1,0 +1,15 @@
+[{
+  "Name": "aiassist",
+  "Description": "AI-assisted coding with OpenAI/Anthropic integration for micro editor",
+  "Website": "https://github.com/yourusername/micro-aiassist",
+  "Tags": ["ai", "code-completion", "openai", "anthropic", "copilot"],
+  "Versions": [
+    {
+      "Version": "0.1.0",
+      "Url": "https://github.com/yourusername/micro-aiassist/archive/v0.1.0.zip",
+      "Require": {
+        "micro": ">=2.0.0"
+      }
+    }
+  ]
+}]
