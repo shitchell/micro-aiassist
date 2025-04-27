@@ -78,7 +78,7 @@ function loadConfig()
     local configData, err = ioutil.ReadFile(configPath)
     
     if err ~= nil then
-        micro.Log("Failed to load aiassist config: " .. err)
+        micro.Log("Failed to load aiassist config: " .. tostring(err))
         return
     end
     
@@ -120,7 +120,7 @@ function createDefaultConfig(configPath)
     -- Write the config file
     local err = ioutil.WriteFile(configPath, configJson, 0600)
     if err ~= nil then
-        micro.Log("Failed to write default config: " .. err)
+        micro.Log("Failed to write default config: " .. tostring(err))
     end
 end
 
@@ -144,7 +144,7 @@ function saveConfig()
     
     local err = ioutil.WriteFile(configPath, configJson, 0600)
     if err ~= nil then
-        micro.InfoBar():Error("Failed to write config: " .. err)
+        micro.InfoBar():Error("Failed to write config: " .. tostring(err))
     else
         micro.InfoBar():Message("Configuration saved")
     end
@@ -195,7 +195,7 @@ function requestOpenAI(prompt, bp)
     -- Make the API request
     local response, err = util.HttpRequest("POST", "https://api.openai.com/v1/chat/completions", headers, jsonStr)
     if err ~= nil then
-        micro.InfoBar():Error("OpenAI API request failed: " .. err)
+        micro.InfoBar():Error("OpenAI API request failed: " .. tostring(err))
         return nil
     end
     
@@ -203,7 +203,7 @@ function requestOpenAI(prompt, bp)
     local respTable = {}
     err = json.Unmarshal(response, respTable)
     if err ~= nil then
-        micro.InfoBar():Error("Failed to parse OpenAI response: " .. err)
+        micro.InfoBar():Error("Failed to parse OpenAI response: " .. tostring(err))
         return nil
     end
     
@@ -241,7 +241,7 @@ function requestAnthropic(prompt, bp)
     -- Make the API request
     local response, err = util.HttpRequest("POST", "https://api.anthropic.com/v1/complete", headers, jsonStr)
     if err ~= nil then
-        micro.InfoBar():Error("Anthropic API request failed: " .. err)
+        micro.InfoBar():Error("Anthropic API request failed: " .. tostring(err))
         return nil
     end
     
@@ -249,7 +249,7 @@ function requestAnthropic(prompt, bp)
     local respTable = {}
     err = json.Unmarshal(response, respTable)
     if err ~= nil then
-        micro.InfoBar():Error("Failed to parse Anthropic response: " .. err)
+        micro.InfoBar():Error("Failed to parse Anthropic response: " .. tostring(err))
         return nil
     end
     
