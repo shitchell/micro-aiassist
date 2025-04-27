@@ -5,6 +5,7 @@ local config = import("micro/config")
 local buffer = import("micro/buffer")
 local shell = import("micro/shell")
 local util = import("micro/util")
+local log = import("micro/log")
 local ioutil = import("io/ioutil")
 local http = import("net/http")
 local json = import("encoding/json")
@@ -40,8 +41,8 @@ function init()
     
     -- Set up keybindings
     config.TryBindKey("Alt-]", "lua:aiassist.completeCode", false)
-    config.TryBindKey("Alt-e", "lua:aiassist.explainCode", false)
-    config.TryBindKey("Tab", "lua:aiassist.acceptSuggestion", false)
+    -- config.TryBindKey("Alt-e", "lua:aiassist.explainCode", false)
+    -- config.TryBindKey("Tab", "lua:aiassist.acceptSuggestion", false)
     
     -- Add help documentation
     config.AddRuntimeFile("aiassist", config.RTHelp, "help/aiassist.md")
@@ -207,8 +208,17 @@ function requestOpenAI(prompt, bp)
             table.insert(headerArray, value)
         end
     end
+
+    -- Make the HTTP request using HttpRequest - providing method, url, headers in flat array
+    -- Add Content-Type header for JSON
+    table.insert(headerArray, "Content-Type")
+    table.insert(headerArray, "application/json")
     
-    -- Call the HttpRequest function with proper parameters
+    -- Add a custom header for the request body since HttpRequest doesn't directly support a body
+    table.insert(headerArray, "X-Body")
+    table.insert(headerArray, jsonStr)
+    
+    -- Make the API request using HttpRequest
     local response, err = util.HttpRequest("POST", "https://api.openai.com/v1/chat/completions", headerArray)
     if err ~= nil then
         micro.InfoBar():Error("OpenAI API request failed: " .. tostring(err))
@@ -281,7 +291,16 @@ function requestAnthropic(prompt, bp)
         end
     end
     
-    -- Call the HttpRequest function with proper parameters
+    -- Make the HTTP request using HttpRequest - providing method, url, headers in flat array
+    -- Add Content-Type header for JSON
+    table.insert(headerArray, "Content-Type")
+    table.insert(headerArray, "application/json")
+    
+    -- Add a custom header for the request body since HttpRequest doesn't directly support a body
+    table.insert(headerArray, "X-Body")
+    table.insert(headerArray, jsonStr)
+    
+    -- Make the API request using HttpRequest
     local response, err = util.HttpRequest("POST", "https://api.anthropic.com/v1/complete", headerArray)
     if err ~= nil then
         micro.InfoBar():Error("Anthropic API request failed: " .. tostring(err))
