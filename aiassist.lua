@@ -277,7 +277,9 @@ function getContext(buf, cursorLoc, contextLines)
         local lineText = buf:Line(i)
         if i == currentLine then
             -- Mark the current line and get text up to cursor
-            local lineUpToCursor = util.String(buf:Substr(buffer.Loc(0, i), cursorLoc))
+            -- Create a new buffer.Loc directly using the values from cursorLoc
+            local loc = buffer.Loc(cursorLoc.X, cursorLoc.Y)
+            local lineUpToCursor = util.String(buf:Substr(buffer.Loc(0, i), loc))
             context = context .. "> " .. lineUpToCursor .. "█\n" -- Use █ as cursor marker
         else
             context = context .. "  " .. lineText .. "\n"
@@ -539,7 +541,9 @@ function acceptSuggestion(bp)
     
     -- Insert the suggestion at cursor position
     local cursor = bp.Buf:GetActiveCursor()
-    bp.Buf:Insert(cursor.Loc, currentSuggestion)
+    -- Create a new buffer.Loc to ensure we're not using a pointer
+    local loc = buffer.Loc(cursor.Loc.X, cursor.Loc.Y)
+    bp.Buf:Insert(loc, currentSuggestion)
     
     -- Clear the suggestion
     clearSuggestions(bp)
@@ -617,7 +621,9 @@ function shouldSuggest(buf, loc)
     end
     
     -- Get current line up to cursor
-    local lineUpToCursor = util.String(buf:Substr(buffer.Loc(0, loc.Y), loc))
+    -- Create a new buffer.Loc to ensure we're not using a pointer
+    local newLoc = buffer.Loc(loc.X, loc.Y)
+    local lineUpToCursor = util.String(buf:Substr(buffer.Loc(0, loc.Y), newLoc))
     
     -- Check for trigger characters
     local triggers = {
