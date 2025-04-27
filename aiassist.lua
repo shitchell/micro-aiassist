@@ -178,10 +178,13 @@ function requestOpenAI(prompt, bp)
     local temperature = tonumber(bp.Buf.Settings["aiassist.temperature"])
     local api_key = bp.Buf.Settings["aiassist.api_key"]
     
+    -- Properly escape the prompt for JSON
+    local escapedPrompt = prompt:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+    
     -- Build request payload
     local jsonStr = fmt.Sprintf('{"model": "%s", "messages": [{"role": "user", "content": "%s"}], "max_tokens": %d, "temperature": %f}', 
         model, 
-        prompt:gsub('"', '\\"'), -- Escape quotes in the prompt
+        escapedPrompt,
         max_tokens,
         temperature
     )
@@ -193,15 +196,40 @@ function requestOpenAI(prompt, bp)
     }
     
     -- Make the API request
-    local response, err = util.HttpRequest("POST", "https://api.openai.com/v1/chat/completions", headers, jsonStr)
+    -- Convert headers table to flat array format expected by HttpRequest
+    -- The format should be ["Content-Type", "application/json", "Authorization", "Bearer xxxx"]
+    local headerArray = {}
+    for k, v in pairs(headers) do
+        -- Extract key and value from the format "Key: Value"
+        local key, value = string.match(v, "([^:]+):%s?(.*)")
+        if key and value then
+            table.insert(headerArray, key)
+            table.insert(headerArray, value)
+        end
+    end
+    
+    -- Call the HttpRequest function with proper parameters
+    local response, err = util.HttpRequest("POST", "https://api.openai.com/v1/chat/completions", headerArray)
     if err ~= nil then
         micro.InfoBar():Error("OpenAI API request failed: " .. tostring(err))
         return nil
     end
     
+    -- Read response body
+    local ioutil = import("io/ioutil")
+    local responseBody, err = ioutil.ReadAll(response.Body)
+    if err ~= nil then
+        micro.InfoBar():Error("Failed to read OpenAI response: " .. tostring(err))
+        return nil
+    end
+    response.Body:Close()
+    
+    -- Convert response body to string
+    local responseStr = util.String(responseBody)
+    
     -- Parse the response
     local respTable = {}
-    err = json.Unmarshal(response, respTable)
+    err = json.Unmarshal(responseStr, respTable)
     if err ~= nil then
         micro.InfoBar():Error("Failed to parse OpenAI response: " .. tostring(err))
         return nil
@@ -223,10 +251,13 @@ function requestAnthropic(prompt, bp)
     local temperature = tonumber(bp.Buf.Settings["aiassist.temperature"])
     local api_key = bp.Buf.Settings["aiassist.api_key"]
     
+    -- Properly escape the prompt for JSON
+    local escapedPrompt = prompt:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t')
+    
     -- Build request payload
     local jsonStr = fmt.Sprintf('{"model": "%s", "prompt": "%s", "max_tokens_to_sample": %d, "temperature": %f}', 
         model, 
-        prompt:gsub('"', '\\"'), -- Escape quotes in the prompt
+        escapedPrompt,
         max_tokens,
         temperature
     )
@@ -238,16 +269,40 @@ function requestAnthropic(prompt, bp)
         "anthropic-version: 2023-06-01"
     }
     
-    -- Make the API request
-    local response, err = util.HttpRequest("POST", "https://api.anthropic.com/v1/complete", headers, jsonStr)
+    -- Convert headers table to flat array format expected by HttpRequest
+    -- The format should be ["Content-Type", "application/json", "X-API-Key", "xxxx"]
+    local headerArray = {}
+    for k, v in pairs(headers) do
+        -- Extract key and value from the format "Key: Value"
+        local key, value = string.match(v, "([^:]+):%s?(.*)")
+        if key and value then
+            table.insert(headerArray, key)
+            table.insert(headerArray, value)
+        end
+    end
+    
+    -- Call the HttpRequest function with proper parameters
+    local response, err = util.HttpRequest("POST", "https://api.anthropic.com/v1/complete", headerArray)
     if err ~= nil then
         micro.InfoBar():Error("Anthropic API request failed: " .. tostring(err))
         return nil
     end
     
+    -- Read response body
+    local ioutil = import("io/ioutil")
+    local responseBody, err = ioutil.ReadAll(response.Body)
+    if err ~= nil then
+        micro.InfoBar():Error("Failed to read Anthropic response: " .. tostring(err))
+        return nil
+    end
+    response.Body:Close()
+    
+    -- Convert response body to string
+    local responseStr = util.String(responseBody)
+    
     -- Parse the response
     local respTable = {}
-    err = json.Unmarshal(response, respTable)
+    err = json.Unmarshal(responseStr, respTable)
     if err ~= nil then
         micro.InfoBar():Error("Failed to parse Anthropic response: " .. tostring(err))
         return nil
