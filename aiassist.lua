@@ -71,6 +71,7 @@ function loadConfig()
     if err ~= nil then
         -- Create default config (silent if it doesn't exist)
         createDefaultConfig(configPath)
+        return
     end
     
     -- Load the config
@@ -81,79 +82,73 @@ function loadConfig()
         return
     end
     
-    -- Parse and apply config
-    local configTable = {}
-    err = json.Unmarshal(configData, configTable)
-    
-    if err ~= nil then
-        micro.Log("Failed to parse aiassist config: " .. err)
-        return
-    }
+    -- Simple parsing of JSON without full unmarshaling
+    -- Extract values using pattern matching instead
+    local api_key = configData:match('"api_key"%s*:%s*"([^"]*)"')
+    local provider = configData:match('"provider"%s*:%s*"([^"]*)"')
+    local model = configData:match('"model"%s*:%s*"([^"]*)"')
+    local display_mode = configData:match('"display_mode"%s*:%s*"([^"]*)"')
     
     -- Apply loaded settings
-    if configTable.api_key then
-        config.SetGlobalOption("aiassist.api_key", configTable.api_key)
+    if api_key and api_key ~= "" then
+        config.SetGlobalOption("aiassist.api_key", api_key)
     end
     
-    if configTable.provider then
-        config.SetGlobalOption("aiassist.api_provider", configTable.provider)
+    if provider and provider ~= "" then
+        config.SetGlobalOption("aiassist.api_provider", provider)
     end
     
-    if configTable.model then
-        config.SetGlobalOption("aiassist.model", configTable.model)
+    if model and model ~= "" then
+        config.SetGlobalOption("aiassist.model", model)
     end
     
-    if configTable.display_mode then
-        config.SetGlobalOption("aiassist.display_mode", configTable.display_mode)
+    if display_mode and display_mode ~= "" then
+        config.SetGlobalOption("aiassist.display_mode", display_mode)
     end
 end
 
 -- Function to create a default configuration file
 function createDefaultConfig(configPath)
-    local defaultConfig = {
-        api_key = "",
-        provider = "openai",
-        model = "gpt-4-turbo",
-        display_mode = "auto"
-    }
+    -- Create a simple JSON string directly instead of using Marshal
+    local configJson = [[{
+        "api_key": "",
+        "provider": "openai",
+        "model": "gpt-4-turbo",
+        "display_mode": "auto"
+    }]]
     
-    local configJson, err = json.Marshal(defaultConfig)
-    if err ~= nil then
-        micro.Log("Failed to create default config: " .. err)
-        return
-    end
-    
-    err = ioutil.WriteFile(configPath, configJson, 0600)
+    -- Write the config file
+    local err = ioutil.WriteFile(configPath, configJson, 0600)
     if err ~= nil then
         micro.Log("Failed to write default config: " .. err)
     end
-}
+end
 
 -- Function to save configuration
 function saveConfig()
     local configDir = config.ConfigDir
     local configPath = filepath.Join(configDir, "aiassist.json")
     
-    local configData = {
-        api_key = config.GetGlobalOption("aiassist.api_key"),
-        provider = config.GetGlobalOption("aiassist.api_provider"),
-        model = config.GetGlobalOption("aiassist.model"),
-        display_mode = config.GetGlobalOption("aiassist.display_mode")
-    }
+    local api_key = config.GetGlobalOption("aiassist.api_key") or ""
+    local provider = config.GetGlobalOption("aiassist.api_provider") or "openai"
+    local model = config.GetGlobalOption("aiassist.model") or "gpt-4-turbo"
+    local display_mode = config.GetGlobalOption("aiassist.display_mode") or "auto"
     
-    local configJson, err = json.Marshal(configData)
-    if err ~= nil then
-        micro.InfoBar():Error("Failed to save config: " .. err)
-        return
-    end
+    -- Create the JSON string directly
+    local configJson = string.format([[{
+        "api_key": "%s",
+        "provider": "%s",
+        "model": "%s",
+        "display_mode": "%s"
+    }]], api_key, provider, model, display_mode)
     
-    err = ioutil.WriteFile(configPath, configJson, 0600)
+    local err = ioutil.WriteFile(configPath, configJson, 0600)
     if err ~= nil then
         micro.InfoBar():Error("Failed to write config: " .. err)
-    else {
+    else
         micro.InfoBar():Message("Configuration saved")
-    }
-}
+    end
+end
 
 -- Function to make API requests
 function makeAPIRequest(prompt, bp)
@@ -174,7 +169,7 @@ function makeAPIRequest(prompt, bp)
         micro.InfoBar():Error("Unknown API provider: " .. provider)
         return nil
     end
-}
+end
 
 -- Function to request completion from OpenAI
 function requestOpenAI(prompt, bp)
@@ -210,7 +205,7 @@ function requestOpenAI(prompt, bp)
     if err ~= nil then
         micro.InfoBar():Error("Failed to parse OpenAI response: " .. err)
         return nil
-    }
+    end
     
     -- Extract the completion text
     if respTable.choices and respTable.choices[1] and respTable.choices[1].message then
@@ -219,7 +214,7 @@ function requestOpenAI(prompt, bp)
     
     micro.InfoBar():Error("Unexpected API response format")
     return nil
-}
+end
 
 -- Function to request completion from Anthropic
 function requestAnthropic(prompt, bp)
@@ -256,7 +251,7 @@ function requestAnthropic(prompt, bp)
     if err ~= nil then
         micro.InfoBar():Error("Failed to parse Anthropic response: " .. err)
         return nil
-    }
+    end
     
     -- Extract the completion text
     if respTable.completion then
@@ -265,7 +260,7 @@ function requestAnthropic(prompt, bp)
     
     micro.InfoBar():Error("Unexpected API response format")
     return nil
-}
+end
 
 -- Function to get context from current buffer
 function getContext(buf, cursorLoc, contextLines)
@@ -286,14 +281,14 @@ function getContext(buf, cursorLoc, contextLines)
             context = context .. "> " .. lineUpToCursor .. "█\n" -- Use █ as cursor marker
         else
             context = context .. "  " .. lineText .. "\n"
-        }
-    }
+        end
+    end
     
     -- Add prompt instruction
     context = context .. "\nComplete the code at the cursor position (marked with █). Only return the code completion, no explanations or markdown formatting:"
     
     return context
-}
+end
 
 -- Main function to generate code completion
 function completeCode(bp)
@@ -309,10 +304,10 @@ function completeCode(bp)
         -- Display the completion based on settings
         displayCompletion(bp, completion)
         return true
-    }
+    end
     
     return false
-}
+end
 
 -- Function to explain selected code
 function explainCode(bp)
@@ -325,12 +320,12 @@ function explainCode(bp)
     else
         -- Try to get the current function or block
         text = getCurrentBlock(bp.Buf, cursor.Loc)
-    }
+    end
     
     if text == "" then
         micro.InfoBar():Error("No code selected to explain")
         return false
-    }
+    end
     
     local prompt = "Explain this code concisely:\n\n" .. text
     
@@ -356,7 +351,7 @@ function explainCode(bp)
     end)
     
     return true
-}
+end
 
 -- Helper function to get the current code block/function
 function getCurrentBlock(buf, loc)
@@ -373,7 +368,7 @@ function getCurrentBlock(buf, loc)
             break
         end
         startLine = startLine - 1
-    }
+    end
     
     -- Look forwards for end of block
     while endLine < buf:LinesNum() - 1 do
@@ -383,16 +378,16 @@ function getCurrentBlock(buf, loc)
             break
         end
         endLine = endLine + 1
-    }
+    end
     
     -- Extract the block
     local block = ""
     for i = startLine, endLine do
         block = block .. buf:Line(i) .. "\n"
-    }
+    end
     
     return block
-}
+end
 
 -- Function to display completion based on mode
 function displayCompletion(bp, completion)
@@ -410,7 +405,7 @@ function displayCompletion(bp, completion)
         else
             displayMode = "ghost"
         end
-    }
+    end
     
     -- Display suggestion based on configured mode
     if displayMode == "ghost" then
@@ -419,12 +414,12 @@ function displayCompletion(bp, completion)
         displayPopupSuggestion(bp, completion)
     elseif displayMode == "pane" then
         displayPaneSuggestion(bp, completion)
-    }
+    end
     
     -- Mark that a suggestion is active
     suggestionActive = true
     currentSuggestion = completion
-}
+end
 
 -- Function to clear all active suggestions
 function clearSuggestions(bp)
@@ -442,12 +437,12 @@ function clearSuggestions(bp)
                 break
             end
         end
-    }
+    end
     
     -- Reset state
     suggestionActive = false
     currentSuggestion = nil
-}
+end
 
 -- Function to display ghost text suggestion
 function displayGhostSuggestion(bp, completion)
@@ -464,7 +459,7 @@ function displayGhostSuggestion(bp, completion)
     
     -- Set up a hint about how to accept
     micro.InfoBar():Message("Press " .. bp.Buf.Settings["aiassist.keybinding_accept"] .. " to accept suggestion")
-}
+end
 
 -- Function to display popup suggestion
 function displayPopupSuggestion(bp, completion)
@@ -488,7 +483,7 @@ function displayPopupSuggestion(bp, completion)
     
     -- Return focus to the original pane
     micro.CurPane().Buf = currentPane.Buf
-}
+end
 
 -- Function to display suggestion in a dedicated pane
 function displayPaneSuggestion(bp, completion)
@@ -507,7 +502,7 @@ function displayPaneSuggestion(bp, completion)
     
     -- Set up hint
     micro.InfoBar():Message("Press " .. bp.Buf.Settings["aiassist.keybinding_accept"] .. " to accept suggestion")
-}
+end
 
 -- Helper function to get or create a suggestion pane
 function getSuggestionPane(bp)
@@ -521,7 +516,7 @@ function getSuggestionPane(bp)
                 return pane
             end
         end
-    }
+    end
     
     -- If it doesn't exist, create it (at bottom)
     bp:HSplit()
@@ -533,14 +528,14 @@ function getSuggestionPane(bp)
     micro.CurPane().Buf = bp.Buf
     
     return newPane
-}
+end
 
 -- Function to accept the current suggestion
 function acceptSuggestion(bp)
     if not suggestionActive or not currentSuggestion then
         -- No active suggestion, just insert a tab
         return false
-    }
+    end
     
     -- Insert the suggestion at cursor position
     local cursor = bp.Buf:GetActiveCursor()
@@ -550,14 +545,14 @@ function acceptSuggestion(bp)
     clearSuggestions(bp)
     
     return true
-}
+end
 
 -- Function to configure AI settings
 function configureAI(bp, args)
     if #args < 2 then
         micro.InfoBar():Error("Usage: aiConfig [option] [value]")
         return
-    }
+    end
     
     local option = "aiassist." .. args[1]
     local value = args[2]
@@ -569,20 +564,20 @@ function configureAI(bp, args)
     saveConfig()
     
     return true
-}
+end
 
 -- Function to set display mode
 function setDisplayMode(bp, args)
     if #args < 1 then
         micro.InfoBar():Error("Usage: aiDisplayMode [auto|ghost|popup|pane]")
         return
-    }
+    end
     
     local mode = args[1]:lower()
     if mode ~= "auto" and mode ~= "ghost" and mode ~= "popup" and mode ~= "pane" then
         micro.InfoBar():Error("Invalid display mode. Use: auto, ghost, popup, or pane")
         return
-    }
+    end
     
     config.SetGlobalOption("aiassist.display_mode", mode)
     micro.InfoBar():Message("AI suggestions will now display in " .. mode .. " mode")
@@ -591,14 +586,14 @@ function setDisplayMode(bp, args)
     saveConfig()
     
     return true
-}
+end
 
 -- Auto-suggest as user types
 function onRune(bp)
     -- Only auto-suggest if enabled in settings
     if bp.Buf.Settings["aiassist.auto_suggest"] ~= "true" then
         return false
-    }
+    end
     
     -- Don't trigger suggestion too frequently
     micro.After(tonumber(bp.Buf.Settings["aiassist.suggestion_delay"]), function()
@@ -608,7 +603,7 @@ function onRune(bp)
     end)
     
     return false
-}
+end
 
 -- Determine if we should suggest code completion
 function shouldSuggest(buf, loc)
@@ -619,7 +614,7 @@ function shouldSuggest(buf, loc)
     
     if suggestionActive then
         return false
-    }
+    end
     
     -- Get current line up to cursor
     local lineUpToCursor = util.String(buf:Substr(buffer.Loc(0, loc.Y), loc))
@@ -639,10 +634,10 @@ function shouldSuggest(buf, loc)
         if lineUpToCursor:match(trigger .. "$") then
             return true
         end
-    }
+    end
     
     return false
-}
+end
 
 -- Callback when buffer is opened
 function onBufferOpen(buf)
@@ -652,4 +647,4 @@ function onBufferOpen(buf)
         -- Don't show warning, just log it
         micro.Log("AI Assist: No API key configured")
     end
-}
+end
